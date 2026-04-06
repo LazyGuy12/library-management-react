@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
-  username: {
+  mssv: {
     type: String,
-    required: [true, 'Vui lòng nhập tên đăng nhập'],
+    required: [true, 'Vui lòng nhập mã số sinh viên'],
     unique: true,
     trim: true,
-    lowercase: true
+    match: [/^[0-9]{8,10}$/, 'MSSV phải là 8-10 chữ số']
   },
   password: {
     type: String,
