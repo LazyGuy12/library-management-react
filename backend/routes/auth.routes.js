@@ -2,12 +2,20 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth.controller');
-const userController = require('../controllers/user.controller');
+const authJwt = require('../middlewares/authJwt');
 
-// Đăng ký tài khoản mới (Dùng hàm register từ userController)
-router.post('/signup', userController.register);
+// Đăng ký tài khoản mới
+router.post('/signup', authController.signup);
 
-// Đăng nhập (Dùng hàm signin từ authController)
+// Đăng nhập
 router.post('/signin', authController.signin);
+
+// Refresh token
+router.post('/refresh-token', authController.refreshToken);
+
+// Kiểm tra token
+router.get('/verify', authJwt.verifyToken, (req, res) => {
+  res.status(200).json({ success: true, message: "Token hợp lệ!", userId: req.userId, role: req.userRole });
+});
 
 module.exports = router;

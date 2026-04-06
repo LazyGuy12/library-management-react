@@ -10,6 +10,11 @@ const BookSchema = new mongoose.Schema({
   image: { type: String },                   // URL ảnh bìa sách
   quantity: { type: Number, default: 1 },    // Tổng số lượng nhập về
   available: { type: Number, default: 1 },   // Số lượng thực tế còn trên kệ để cho mượn
+  status: { 
+    type: String, 
+    enum: ['AVAILABLE', 'BORROWED', 'LOST', 'DAMAGED'], 
+    default: 'AVAILABLE' 
+  },
   location: { type: String }                 // Vị trí kệ (VD: Khu A - Kệ 1)
 }, { 
   timestamps: true 

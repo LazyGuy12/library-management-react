@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const bookController = require('../controllers/book.controller');
-const { verifyToken, isAdmin } = require('../middlewares/authJwt');
+const authJwt = require('../middlewares/authJwt');
 
 // Lấy danh sách tất cả sách (Public)
 router.get('/', bookController.findAll);
@@ -11,6 +11,12 @@ router.get('/', bookController.findAll);
 router.get('/:id', bookController.findOne);
 
 // Thêm sách mới (Admin only)
-router.post('/', verifyToken, isAdmin, bookController.create);
+router.post('/', authJwt.verifyToken, authJwt.isAdmin, bookController.create);
+
+// Cập nhật sách (Admin only)
+router.put('/:id', authJwt.verifyToken, authJwt.isAdmin, bookController.update);
+
+// Xóa sách (Admin only)
+router.delete('/:id', authJwt.verifyToken, authJwt.isAdmin, bookController.delete);
 
 module.exports = router;
