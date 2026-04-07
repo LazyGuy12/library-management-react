@@ -25,8 +25,12 @@ const LoanSchema = new mongoose.Schema({
   },
   status: { 
     type: String, 
-    enum: ['borrowed', 'returned', 'overdue'], 
-    default: 'borrowed' 
+    enum: ['pending', 'borrowed', 'returned', 'overdue'], 
+    default: 'pending'
+    // pending: chờ lấy sách (user đặt mượn)
+    // borrowed: đang mượn (đã lấy sách)
+    // returned: đã trả
+    // overdue: quá hạn
   },
   fine: { 
     type: Number, 
