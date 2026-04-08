@@ -8,6 +8,9 @@ const upload = require('../config/multer');
 // Lấy danh sách tất cả sách (Public)
 router.get('/', bookController.findAll);
 
+// Lấy danh sách sách đã đánh giá (Authenticated user)
+router.get('/my-ratings', authJwt.verifyToken, bookController.getMyRatings);
+
 // Lấy chi tiết một cuốn sách (Public)
 router.get('/:id', bookController.findOne);
 

@@ -20,8 +20,18 @@ function BorrowHistoryPage() {
 
   useEffect(() => {
     fetchSlips();
+    fetchRatedBookIds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
+
+  const fetchRatedBookIds = async () => {
+    try {
+      const res = await bookService.getMyRatings();
+      setRatedBookIds(new Set(res.data.ratedBookIds || []));
+    } catch {
+      // Not critical
+    }
+  };
 
   const fetchSlips = async () => {
     try {

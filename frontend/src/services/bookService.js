@@ -33,6 +33,9 @@ export const bookService = {
   // Xóa sách (admin)
   deleteBook: (id) => API.delete(`/books/${id}`),
 
+  // Lấy danh sách sách đã đánh giá
+  getMyRatings: () => API.get('/books/my-ratings'),
+
   // Đánh giá sách (user đã mượn và trả)
   rateBook: (bookId, score) => API.post(`/books/${bookId}/rate`, { score }),
 

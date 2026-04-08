@@ -218,6 +218,18 @@ exports.delete = async (req, res) => {
 };
 
 // 6. Đánh giá sách (chỉ user đã mượn và trả)
+// Lấy danh sách sách mà user đã đánh giá
+exports.getMyRatings = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const books = await Book.find({ 'ratings.user': userId }, '_id');
+    const ratedBookIds = books.map(b => b._id.toString());
+    res.status(200).json({ success: true, ratedBookIds });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 exports.rateBook = async (req, res) => {
   try {
     const { id } = req.params;
