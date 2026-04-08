@@ -37,8 +37,18 @@ function HomePage() {
     fetchBooks();
     fetchReturnedBookIds();
     fetchBorrowedBookIds();
+    fetchRatedBookIds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.page, search]);
+
+  const fetchRatedBookIds = async () => {
+    try {
+      const res = await bookService.getMyRatings();
+      setRatedBookIds(new Set(res.data.ratedBookIds || []));
+    } catch {
+      // Not critical
+    }
+  };
 
   const fetchBooks = async () => {
     try {
