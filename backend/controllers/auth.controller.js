@@ -7,19 +7,19 @@ const jwt = require('jsonwebtoken');
 // ĐĂNG KÝ (Sign Up)
 exports.signup = async (req, res) => {
   try {
-    const { mssv, email, password, fullName } = req.body;
+    const { username, email, password, fullName } = req.body;
 
     // Validate input
-    if (!mssv || !email || !password || !fullName) {
+    if (!username || !email || !password || !fullName) {
       return res.status(400).json({ 
-        message: "Vui lòng nhập đầy đủ: MSSV, email, password, fullName!" 
+        message: "Vui lòng nhập đầy đủ: username, email, password, fullName!" 
       });
     }
 
-    // Kiểm tra MSSV đã tồn tại
-    const existingUser = await User.findOne({ mssv });
+    // Kiểm tra username đã tồn tại
+    const existingUser = await User.findOne({ username });
     if (existingUser) {
-      return res.status(400).json({ message: "MSSV đã tồn tại!" });
+      return res.status(400).json({ message: "Username đã tồn tại!" });
     }
 
     // Kiểm tra email đã tồn tại
@@ -30,7 +30,7 @@ exports.signup = async (req, res) => {
 
     // Tạo User mới (password sẽ được hash tự động bằng middleware pre-save)
     const newUser = new User({
-      mssv,
+      username,
       email,
       password,
       fullName,
@@ -43,14 +43,8 @@ exports.signup = async (req, res) => {
     const expiryDate = new Date();
     expiryDate.setFullYear(expiryDate.getFullYear() + 1); // +1 năm
 
-    // Tạo cardNumber
-    const year = new Date().getFullYear();
-    const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const cardNumber = `LIB-${year}-${randomStr}`;
-
     const libraryCard = new LibraryCard({
       user: savedUser._id,
-      cardNumber: cardNumber,
       status: 'ACTIVE',
       expiryDate: expiryDate
     });
@@ -61,7 +55,7 @@ exports.signup = async (req, res) => {
       message: "✅ Đăng ký thành công! Thẻ độc giả đã được tạo.",
       user: {
         id: savedUser._id,
-        mssv: savedUser.mssv,
+        username: savedUser.username,
         email: savedUser.email,
         fullName: savedUser.fullName,
         role: savedUser.role

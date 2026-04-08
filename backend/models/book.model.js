@@ -15,13 +15,7 @@ const BookSchema = new mongoose.Schema({
     enum: ['AVAILABLE', 'BORROWED', 'LOST', 'DAMAGED'], 
     default: 'AVAILABLE' 
   },
-  location: { type: String },                 // Vị trí kệ (VD: Khu A - Kệ 1)
-  ratings: [{
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    score: { type: Number, min: 1, max: 5 }
-  }],
-  avgRating: { type: Number, default: 0 },
-  totalRatings: { type: Number, default: 0 }
+  location: { type: String }                 // Vị trí kệ (VD: Khu A - Kệ 1)
 }, { 
   timestamps: true 
 });

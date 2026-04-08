@@ -44,7 +44,7 @@ exports.getStats = async (req, res) => {
     // Phiếu mượn gần đây (5 phiếu)
     const recentLoans = await Loan.find()
       .populate('book', 'title author')
-      .populate('user', 'mssv fullName')
+      .populate('user', 'username fullName')
       .sort({ borrowDate: -1 })
       .limit(5);
 

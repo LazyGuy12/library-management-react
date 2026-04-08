@@ -31,9 +31,6 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded files as static content
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/books', require('./routes/book.routes'));
@@ -41,10 +38,7 @@ app.use('/api/loans', require('./routes/loan.routes'));
 app.use('/api/cards', require('./routes/card.routes'));
 app.use('/api/fines', require('./routes/fine.routes'));
 app.use('/api/users', require('./routes/user.routes'));
-app.use('/api/notifications', require('./routes/notification.routes'));
-app.use('/api/borrow-slips', require('./routes/borrowSlip.routes'));
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
-app.use('/api/reviews', require('./routes/review.routes'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

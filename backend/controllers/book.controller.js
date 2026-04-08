@@ -52,7 +52,7 @@ exports.findAll = async (req, res) => {
 // 2. Thêm sách mới (Chỉ Admin dùng)
 exports.create = async (req, res) => {
   try {
-    const { title, author, category, isbn, quantity, description, location } = req.body;
+    const { title, author, category, isbn, quantity, description, image, location } = req.body;
     
     // Validate input
     if (!title || !author || !category || quantity === undefined) {
@@ -69,26 +69,6 @@ exports.create = async (req, res) => {
       });
     }
     
-    // Handle image upload to Cloudinary
-    let imageUrl = null;
-    if (req.file) {
-      try {
-        // Save buffer to temporary file
-        const tempDir = os.tmpdir();
-        const tempPath = path.join(tempDir, `${Date.now()}_${req.file.originalname}`);
-        await fs.writeFile(tempPath, req.file.buffer);
-        
-        // Upload to Cloudinary
-        const uploadResult = await CloudinaryService.uploadFile(tempPath, 'library-books');
-        imageUrl = uploadResult.url;
-      } catch (uploadErr) {
-        return res.status(400).json({ 
-          success: false,
-          message: "Upload hình ảnh thất bại: " + uploadErr.message 
-        });
-      }
-    }
-    
     const newBook = new Book({
       title,
       author,
@@ -97,7 +77,7 @@ exports.create = async (req, res) => {
       quantity,
       available: quantity,
       description,
-      image: imageUrl,
+      image,
       location
     });
     
@@ -151,44 +131,17 @@ exports.update = async (req, res) => {
       });
     }
 
-    // Get current book to handle old image
-    const currentBook = await Book.findById(id);
-    if (!currentBook) {
+    const book = await Book.findByIdAndUpdate(id, updates, { 
+      new: true, 
+      runValidators: true 
+    });
+
+    if (!book) {
       return res.status(404).json({ 
         success: false,
         message: "Không tìm thấy sách để cập nhật!" 
       });
     }
-
-    // Handle new image upload to Cloudinary
-    if (req.file) {
-      try {
-        // Delete old image from Cloudinary if exists
-        if (currentBook.image) {
-          const publicId = currentBook.image.split('/').pop().split('.')[0];
-          await CloudinaryService.deleteFile(`library-books/${publicId}`).catch(() => {});
-        }
-        
-        // Save buffer to temporary file
-        const tempDir = os.tmpdir();
-        const tempPath = path.join(tempDir, `${Date.now()}_${req.file.originalname}`);
-        await fs.writeFile(tempPath, req.file.buffer);
-        
-        // Upload new image to Cloudinary
-        const uploadResult = await CloudinaryService.uploadFile(tempPath, 'library-books');
-        updates.image = uploadResult.url;
-      } catch (uploadErr) {
-        return res.status(400).json({ 
-          success: false,
-          message: "Upload hình ảnh thất bại: " + uploadErr.message 
-        });
-      }
-    }
-
-    const book = await Book.findByIdAndUpdate(id, updates, { 
-      new: true, 
-      runValidators: true 
-    });
 
     res.status(200).json({ 
       success: true,
@@ -233,96 +186,10 @@ exports.delete = async (req, res) => {
       });
     }
 
-    // Delete image from Cloudinary if exists
-    if (book.image) {
-      try {
-        const publicId = book.image.split('/').pop().split('.')[0];
-        await CloudinaryService.deleteFile(`library-books/${publicId}`).catch(() => {});
-      } catch (err) {
-        console.error('Error deleting image from Cloudinary:', err);
-        // Continue with deletion even if image delete fails
-      }
-    }
-
     res.status(200).json({ 
       success: true,
       message: "✅ Xóa sách thành công!",
       book 
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// 6. Đánh giá sách (chỉ user đã mượn và trả)
-// Lấy danh sách sách mà user đã đánh giá
-exports.getMyRatings = async (req, res) => {
-  try {
-    const userId = req.userId;
-    const books = await Book.find({ 'ratings.user': userId }, '_id');
-    const ratedBookIds = books.map(b => b._id.toString());
-    res.status(200).json({ success: true, ratedBookIds });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-exports.rateBook = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { score } = req.body;
-    const userId = req.userId;
-
-    if (!score || score < 1 || score > 5) {
-      return res.status(400).json({ success: false, message: "Điểm đánh giá phải từ 1 đến 5!" });
-    }
-
-    // Kiểm tra xem user đã từng mượn và trả sách này chưa
-    const Loan = require('../models/loan.model');
-    const BorrowSlip = require('../models/borrowSlip.model');
-    const returnedLoan = await Loan.findOne({ 
-      book: id, 
-      user: userId, 
-      status: 'returned' 
-    });
-    const returnedSlip = await BorrowSlip.findOne({
-      books: id,
-      user: userId,
-      status: 'returned'
-    });
-
-    if (!returnedLoan && !returnedSlip) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Bạn phải mượn và trả sách này trước khi đánh giá!" 
-      });
-    }
-
-    const book = await Book.findById(id);
-    if (!book) {
-      return res.status(404).json({ success: false, message: "Không tìm thấy sách!" });
-    }
-
-    // Cập nhật hoặc thêm đánh giá của user
-    const existingIdx = book.ratings.findIndex(r => r.user.toString() === userId.toString());
-    if (existingIdx >= 0) {
-      book.ratings[existingIdx].score = score;
-    } else {
-      book.ratings.push({ user: userId, score });
-    }
-
-    // Tính lại điểm trung bình
-    const total = book.ratings.reduce((sum, r) => sum + r.score, 0);
-    book.avgRating = Math.round((total / book.ratings.length) * 10) / 10;
-    book.totalRatings = book.ratings.length;
-    
-    await book.save();
-
-    res.status(200).json({ 
-      success: true,
-      message: "✅ Cảm ơn bạn đã đánh giá sách!",
-      avgRating: book.avgRating,
-      totalRatings: book.totalRatings
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

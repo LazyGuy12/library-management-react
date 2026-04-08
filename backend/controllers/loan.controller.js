@@ -66,16 +66,16 @@ exports.createLoan = async (req, res) => {
       });
     }
 
-    // 6. Kiểm tra không mượn/đặt cuốn này lần nữa
+    // 6. Kiểm tra không mượn cuốn này lần nữa
     const existingLoan = await Loan.findOne({
       user: userId,
       book: bookId,
-      status: { $in: ['pending', 'borrowed', 'overdue'] }
+      status: { $in: ['borrowed', 'overdue'] }
     });
     if (existingLoan) {
       return res.status(400).json({ 
         success: false, 
-        message: "⚠️ Bạn đã mượn hoặc đặt cuốn sách này rồi! Vui lòng trả hoặc hủy đơn cũ." 
+        message: "⚠️ Bạn đã mượn cuốn sách này rồi!" 
       });
     }
 
@@ -113,108 +113,57 @@ exports.createLoan = async (req, res) => {
   }
 };
 
-// ADMIN MƯỢN SÁCH CHO USER KHÁC - với card number và ngày trả tùy chỉnh
+// ADMIN MƯỢN SÁCH CHO USER KHÁC (Quick Borrow)
 exports.adminCreateLoan = async (req, res) => {
   try {
-    const { bookId, cardNumber, returnDate } = req.body;
+    const { bookId, userId, daysToBorrow } = req.body;
+    const days = daysToBorrow || 30;
 
-    if (!bookId || !cardNumber || !returnDate) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "bookId, cardNumber và returnDate là bắt buộc!" 
-      });
+    if (!bookId || !userId) {
+      return res.status(400).json({ success: false, message: "bookId và userId là bắt buộc!" });
     }
 
-    // Kiểm tra returnDate > hôm nay
-    const selectedReturnDate = new Date(returnDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (selectedReturnDate <= today) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "❌ Ngày trả sách phải sau hôm nay!" 
-      });
+    // Kiểm tra user tồn tại
+    const User = require('../models/user.model');
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy người dùng!" });
     }
 
-    // Tìm thẻ độc giả theo card number
-    const libraryCard = await LibraryCard.findOne({ 
-      cardNumber: cardNumber.toString().trim() 
-    }).populate('user');
-    
-    if (!libraryCard) {
-      return res.status(404).json({ 
-        success: false, 
-        message: `❌ Không tìm thấy thẻ độc giả với mã: ${cardNumber}!` 
-      });
+    // Kiểm tra thẻ độc giả
+    const card = await LibraryCard.findOne({ user: userId });
+    if (!card) {
+      return res.status(403).json({ success: false, message: "❌ Người dùng chưa có thẻ độc giả!" });
     }
-
-    const targetUser = libraryCard.user;
-    if (!targetUser || !targetUser._id) {
-      return res.status(400).json({
-        success: false,
-        message: '❌ Thẻ độc giả không liên kết với user!'
-      });
+    if (card.status === 'SUSPENDED') {
+      return res.status(403).json({ success: false, message: "🔒 Thẻ người dùng bị khóa!" });
     }
-    const userId = targetUser._id;
-
-    // Kiểm tra trạng thái thẻ độc giả - phải ACTIVE mới được mượn
-    if (libraryCard.status !== 'ACTIVE') {
-      return res.status(403).json({ 
-        success: false, 
-        message: `❌ Thẻ độc giả không hoạt động! Trạng thái: ${libraryCard.status}` 
-      });
-    }
-    
-    // Kiểm tra thẻ hết hạn
-    if (libraryCard.expiryDate && libraryCard.expiryDate < new Date()) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "⚠️ Thẻ độc giả đã hết hạn!" 
-      });
+    if (card.status === 'EXPIRED' || card.expiryDate < new Date()) {
+      return res.status(403).json({ success: false, message: "⚠️ Thẻ người dùng đã hết hạn!" });
     }
 
     // Kiểm tra sách
     const book = await Book.findById(bookId);
     if (!book || book.available <= 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "📚 Sách hiện đã hết!" 
-      });
+      return res.status(400).json({ success: false, message: "📚 Sách hiện đã hết!" });
     }
 
     // Kiểm tra giới hạn 3 cuốn
-    const activeLoans = await Loan.countDocuments({ 
-      user: userId, 
-      status: { $in: ['borrowed', 'overdue'] } 
-    });
+    const activeLoans = await Loan.countDocuments({ user: userId, status: { $in: ['borrowed', 'overdue'] } });
     if (activeLoans >= 3) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "❌ Độc giả đã mượn tối đa 3 cuốn!" 
-      });
+      return res.status(400).json({ success: false, message: "❌ Người dùng đã mượn tối đa 3 cuốn!" });
     }
 
     // Kiểm tra không mượn trùng
-    const existingLoan = await Loan.findOne({ 
-      user: userId, 
-      book: bookId, 
-      status: { $in: ['borrowed', 'overdue'] } 
-    });
+    const existingLoan = await Loan.findOne({ user: userId, book: bookId, status: { $in: ['borrowed', 'overdue'] } });
     if (existingLoan) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "⚠️ Độc giả đã mượn cuốn sách này rồi!" 
-      });
+      return res.status(400).json({ success: false, message: "⚠️ Người dùng đã mượn cuốn sách này rồi!" });
     }
 
-    // ✅ Tất cả điều kiện OK → Tạo phiếu mượn (mượn trực tiếp nên status là borrowed)
-    const loan = new Loan({ 
-      book: bookId, 
-      user: userId, 
-      dueDate: selectedReturnDate,
-      status: 'borrowed'  // Mượn trực tiếp nên sách đã được lấy
-    });
-    
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + days);
+
+    const loan = new Loan({ book: bookId, user: userId, dueDate, status: 'borrowed' });
     book.available -= 1;
 
     const savedLoan = await loan.save();
@@ -222,68 +171,18 @@ exports.adminCreateLoan = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `✅ Tạo phiếu mượn cho ${targetUser.fullName} (${cardNumber}) thành công!`,
+      message: `✅ Mượn sách cho ${targetUser.fullName} thành công!`,
       loan: {
         id: savedLoan._id,
         bookTitle: book.title,
         userName: targetUser.fullName,
-        cardNumber: cardNumber,
         borrowDate: savedLoan.borrowDate,
         dueDate: savedLoan.dueDate,
         status: savedLoan.status
       }
     });
   } catch (err) {
-    res.status(500).json({ 
-      success: false, 
-      message: "❌ Lỗi tạo phiếu mượn: " + err.message 
-    });
-  }
-};
-
-// ADMIN ĐỀU XỨ LÝ PICKUP - chuyển trạng thái từ pending sang borrowed
-exports.pickupLoan = async (req, res) => {
-  try {
-    const loanId = req.params.id;
-
-    // Tìm phiếu mượn
-    const loan = await Loan.findById(loanId).populate('book user');
-    
-    if (!loan) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "❌ Không tìm thấy phiếu mượn!" 
-      });
-    }
-
-    // Kiểm tra trạng thái là pending
-    if (loan.status !== 'pending') {
-      return res.status(400).json({ 
-        success: false, 
-        message: `❌ Chỉ có thể lấy sách cho những phiếu đang chờ lấy! Trạng thái hiện tại: ${loan.status}` 
-      });
-    }
-
-    // Cập nhật trạng thái sang borrowed
-    loan.status = 'borrowed';
-    await loan.save();
-
-    res.status(200).json({
-      success: true,
-      message: `✅ Đã xác nhận lấy sách cho ${loan.user.fullName}!`,
-      loan: {
-        id: loan._id,
-        bookTitle: loan.book.title,
-        userName: loan.user.fullName,
-        status: loan.status,
-        dueDate: loan.dueDate
-      }
-    });
-  } catch (err) {
-    res.status(500).json({ 
-      success: false, 
-      message: "❌ Lỗi xác nhận lấy sách: " + err.message 
-    });
+    res.status(500).json({ success: false, message: "Lỗi mượn sách: " + err.message });
   }
 };
 
@@ -384,10 +283,7 @@ exports.returnBook = async (req, res) => {
 exports.getUserLoans = async (req, res) => {
   try {
     const userId = req.userId;
-    const status = req.query.status;
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
-    const skip = (page - 1) * limit;
+    const status = req.query.status; // borrowed, returned, overdue
 
     const filter = { user: userId };
     if (status) {
@@ -396,22 +292,12 @@ exports.getUserLoans = async (req, res) => {
 
     const loans = await Loan.find(filter)
       .populate('book', 'title author isbn')
-      .sort({ borrowDate: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Loan.countDocuments(filter);
+      .sort({ borrowDate: -1 });
 
     res.status(200).json({
       success: true,
       count: loans.length,
-      loans,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
+      loans
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

@@ -15,7 +15,7 @@ exports.findByUserId = async (req, res) => {
     }
 
     const fines = await Fine.find(filter)
-      .populate('user', 'mssv fullName email')
+      .populate('user', 'username fullName email')
       .populate('loan', 'bookTitle borrowDate dueDate returnDate')
       .sort({ createdDate: -1 });
 
@@ -35,7 +35,7 @@ exports.findOne = async (req, res) => {
     const { fineId } = req.params;
 
     const fine = await Fine.findById(fineId)
-      .populate('user', 'mssv fullName email')
+      .populate('user', 'username fullName email')
       .populate('loan');
 
     if (!fine) {
@@ -78,7 +78,7 @@ exports.confirmPayment = async (req, res) => {
     // Cập nhật phiếu phạt
     fine.status = 'PAID';
     fine.paidDate = new Date();
-    fine.confirmedBy = admin ? admin.mssv : 'admin';
+    fine.confirmedBy = admin ? admin.username : 'admin';
     fine.confirmedAt = new Date();
 
     const updatedFine = await fine.save();
@@ -155,7 +155,7 @@ exports.findAll = async (req, res) => {
     const filter = status ? { status } : {};
 
     const fines = await Fine.find(filter)
-      .populate('user', 'mssv fullName email')
+      .populate('user', 'username fullName email')
       .populate('loan')
       .sort({ createdDate: -1 });
 

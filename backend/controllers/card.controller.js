@@ -7,7 +7,7 @@ const User = require('../models/user.model');
 exports.findAll = async (req, res) => {
   try {
     const cards = await LibraryCard.find()
-      .populate('user', 'mssv fullName email')
+      .populate('user', 'username fullName email')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -27,7 +27,7 @@ exports.findByUserId = async (req, res) => {
 
     // Lấy thẻ độc giả
     const card = await LibraryCard.findOne({ user: userId })
-      .populate('user', 'mssv fullName email');
+      .populate('user', 'username fullName email');
 
     if (!card) {
       return res.status(404).json({ 
@@ -122,90 +122,6 @@ exports.checkCardStatus = async (req, res) => {
       currentStatus: status,
       hasPendingFines: pendingFines > 0,
       pendingFineCount: pendingFines
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// 5. Khóa thẻ độc giả (Admin)
-exports.lockCard = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { reason } = req.body;
-
-    if (!reason) {
-      return res.status(400).json({
-        success: false,
-        message: "Vui lòng nhập lý do khóa thẻ!"
-      });
-    }
-
-    const card = await LibraryCard.findOne({ user: userId });
-    if (!card) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy thẻ độc giả!"
-      });
-    }
-
-    // Cập nhật trạng thái thẻ
-    card.status = 'SUSPENDED';
-    const updatedCard = await card.save();
-
-    // Tạo thông báo cho user
-    const Notification = require('../models/notification.model');
-    const notification = new Notification({
-      user: userId,
-      title: '⚠️ Thẻ của bạn đã bị khóa',
-      message: `Lý do: ${reason}`,
-      type: 'CARD_LOCKED',
-      relatedId: card._id
-    });
-    await notification.save();
-
-    res.status(200).json({
-      success: true,
-      message: "✅ Khóa thẻ thành công! Thông báo được gửi cho user.",
-      card: updatedCard
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// 6. Mở khóa thẻ độc giả (Admin)
-exports.unlockCard = async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    const card = await LibraryCard.findOne({ user: userId });
-    if (!card) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy thẻ độc giả!"
-      });
-    }
-
-    // Cập nhật trạng thái thẻ
-    card.status = 'ACTIVE';
-    const updatedCard = await card.save();
-
-    // Tạo thông báo cho user
-    const Notification = require('../models/notification.model');
-    const notification = new Notification({
-      user: userId,
-      title: '✅ Thẻ của bạn đã được mở khóa',
-      message: "Admin đã mở khóa thẻ cho bạn, giờ đây bạn có thể mượn sách",
-      type: 'CARD_LOCKED',
-      relatedId: card._id
-    });
-    await notification.save();
-
-    res.status(200).json({
-      success: true,
-      message: "✅ Mở khóa thẻ thành công! Thông báo được gửi cho user.",
-      card: updatedCard
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
