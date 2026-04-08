@@ -87,7 +87,7 @@ exports.createLoan = async (req, res) => {
       book: bookId,
       user: userId,
       dueDate: dueDate,
-      status: 'borrowed'
+      status: 'pending'  // Chờ lấy sách
     });
 
     // Giảm số lượng sách

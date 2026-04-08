@@ -74,15 +74,15 @@ exports.signup = async (req, res) => {
 // ĐĂNG NHẬP (Sign In)
 exports.signin = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { mssv, password } = req.body;
     
     // Validate input
-    if (!username || !password) {
-      return res.status(400).json({ message: "Vui lòng nhập tên đăng nhập và mật khẩu!" });
+    if (!mssv || !password) {
+      return res.status(400).json({ message: "Vui lòng nhập MSSV và mật khẩu!" });
     }
     
-    const user = await User.findOne({ username }).select('+password');
-    if (!user) return res.status(404).json({ message: "User không tồn tại." });
+    const user = await User.findOne({ mssv }).select('+password');
+    if (!user) return res.status(404).json({ message: "Sinh viên không tồn tại." });
 
     // Kiểm tra mật khẩu
     const passwordIsValid = await bcrypt.compare(password, user.password);
@@ -141,7 +141,7 @@ exports.signin = async (req, res) => {
     res.status(200).json({
       message: "✅ Đăng nhập thành công!",
       id: user._id,
-      username: user.username,
+      mssv: user.mssv,
       email: user.email,
       fullName: user.fullName,
       role: user.role,

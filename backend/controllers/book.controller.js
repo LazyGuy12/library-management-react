@@ -1,5 +1,9 @@
 // controllers/book.controller.js
 const Book = require('../models/book.model');
+const CloudinaryService = require('../services/cloudinary.service');
+const path = require('path');
+const fs = require('fs').promises;
+const os = require('os');
 
 // 1. Lấy danh sách tất cả sách với pagination + search
 exports.findAll = async (req, res) => {
