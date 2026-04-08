@@ -457,6 +457,35 @@ function AdminBooksPage() {
             </div>
           )}
 
+          {/* Stats */}
+          <div className="admin-stats">
+            <div className="stat-card">
+              <i className="bi bi-book"></i>
+              <div className="stat-info">
+                <span className="stat-label">Tổng Sách</span>
+                <span className="stat-value">{books.length}</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <i className="bi bi-check-circle"></i>
+              <div className="stat-info">
+                <span className="stat-label">Còn Trong Kho</span>
+                <span className="stat-value">
+                  {books.reduce((sum, b) => sum + b.available, 0)}
+                </span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <i className="bi bi-bag-check"></i>
+              <div className="stat-info">
+                <span className="stat-label">Đang Cho Mượn</span>
+                <span className="stat-value">
+                  {books.reduce((sum, b) => sum + (b.quantity - b.available), 0)}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Books Table */}
           <div className="admin-table">
             {books.length > 0 ? (
@@ -529,35 +558,6 @@ function AdminBooksPage() {
                 <p>Không có sách nào</p>
               </div>
             )}
-          </div>
-
-          {/* Stats */}
-          <div className="admin-stats">
-            <div className="stat-card">
-              <i className="bi bi-book"></i>
-              <div className="stat-info">
-                <span className="stat-label">Tổng Sách</span>
-                <span className="stat-value">{books.length}</span>
-              </div>
-            </div>
-            <div className="stat-card">
-              <i className="bi bi-check-circle"></i>
-              <div className="stat-info">
-                <span className="stat-label">Còn Trong Kho</span>
-                <span className="stat-value">
-                  {books.reduce((sum, b) => sum + b.available, 0)}
-                </span>
-              </div>
-            </div>
-            <div className="stat-card">
-              <i className="bi bi-bag-check"></i>
-              <div className="stat-info">
-                <span className="stat-label">Đang Cho Mượn</span>
-                <span className="stat-value">
-                  {books.reduce((sum, b) => sum + (b.quantity - b.available), 0)}
-                </span>
-              </div>
-            </div>
           </div>
 
           {/* Manual Borrow Modal */}

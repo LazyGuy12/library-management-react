@@ -4,17 +4,20 @@
 
 .admin-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #ffffff;
 }
 
 .admin-content {
-  padding: 2rem 1rem;
-  margin-top: 70px;
+  padding: 0 0 3rem;
+  margin-top: 0;
+  width: 100%;
 }
 
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 2rem;
 }
 
 /* ============================================
@@ -25,17 +28,19 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
-  background: white;
+  margin: 0 0 2rem;
+  background: darkgray;
   padding: 1.5rem 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border-radius: 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  width: calc(100% + 4rem);
+  margin-left: -2rem;
 }
 
 .page-title {
   font-size: 1.8rem;
   font-weight: 700;
-  color: #333;
+  color: black;
   margin: 0;
   display: flex;
   align-items: center;
@@ -52,7 +57,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.8rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: darkslateblue;
   color: white;
   border: none;
   border-radius: 8px;
@@ -208,6 +213,8 @@
    ============================================ */
 
 .search-section {
+  display: flex;
+  justify-content: center;
   margin-bottom: 2rem;
 }
 
@@ -220,7 +227,7 @@
   border-radius: 8px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 500px;
+  max-width: 900px;
 }
 
 .search-container i {
@@ -285,6 +292,7 @@
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
   margin-bottom: 2rem;
   overflow-x: auto;
 }
@@ -295,8 +303,8 @@
 }
 
 .admin-table thead {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: darkgray;
+  color: #333;
   font-weight: 600;
   text-transform: uppercase;
   font-size: 0.85rem;
@@ -791,8 +799,8 @@
 
 @media (max-width: 768px) {
   .admin-content {
-    padding: 1rem 0.5rem;
-    margin-top: 60px;
+    padding: 0 0.5rem 1rem;
+    margin-top: 0;
   }
 
   .admin-header {
