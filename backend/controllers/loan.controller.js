@@ -149,6 +149,12 @@ exports.adminCreateLoan = async (req, res) => {
     }
 
     const targetUser = libraryCard.user;
+    if (!targetUser || !targetUser._id) {
+      return res.status(400).json({
+        success: false,
+        message: '❌ Thẻ độc giả không liên kết với user!'
+      });
+    }
     const userId = targetUser._id;
 
     // Kiểm tra trạng thái thẻ độc giả - phải ACTIVE mới được mượn
@@ -378,7 +384,10 @@ exports.returnBook = async (req, res) => {
 exports.getUserLoans = async (req, res) => {
   try {
     const userId = req.userId;
-    const status = req.query.status; // borrowed, returned, overdue
+    const status = req.query.status;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+    const skip = (page - 1) * limit;
 
     const filter = { user: userId };
     if (status) {
@@ -387,12 +396,22 @@ exports.getUserLoans = async (req, res) => {
 
     const loans = await Loan.find(filter)
       .populate('book', 'title author isbn')
-      .sort({ borrowDate: -1 });
+      .sort({ borrowDate: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Loan.countDocuments(filter);
 
     res.status(200).json({
       success: true,
       count: loans.length,
-      loans
+      loans,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

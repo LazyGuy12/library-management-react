@@ -1,5 +1,9 @@
 // controllers/book.controller.js
 const Book = require('../models/book.model');
+const CloudinaryService = require('../services/cloudinary.service');
+const path = require('path');
+const fs = require('fs').promises;
+const os = require('os');
 
 // 1. Lấy danh sách tất cả sách với pagination + search
 exports.findAll = async (req, res) => {
@@ -65,10 +69,24 @@ exports.create = async (req, res) => {
       });
     }
     
-    // Handle image upload - construct URL path
+    // Handle image upload to Cloudinary
     let imageUrl = null;
     if (req.file) {
-      imageUrl = `/uploads/${req.file.filename}`;
+      try {
+        // Save buffer to temporary file
+        const tempDir = os.tmpdir();
+        const tempPath = path.join(tempDir, `${Date.now()}_${req.file.originalname}`);
+        await fs.writeFile(tempPath, req.file.buffer);
+        
+        // Upload to Cloudinary
+        const uploadResult = await CloudinaryService.uploadFile(tempPath, 'library-books');
+        imageUrl = uploadResult.url;
+      } catch (uploadErr) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Upload hình ảnh thất bại: " + uploadErr.message 
+        });
+      }
     }
     
     const newBook = new Book({
@@ -90,13 +108,6 @@ exports.create = async (req, res) => {
       book: savedBook 
     });
   } catch (err) {
-    // Delete uploaded file if database save fails
-    if (req.file) {
-      const fs = require('fs').promises;
-      const path = require('path');
-      await fs.unlink(path.join(__dirname, '../', req.file.path)).catch(() => {});
-    }
-    
     if (err.code === 11000) {
       return res.status(400).json({ 
         success: false,
@@ -140,9 +151,38 @@ exports.update = async (req, res) => {
       });
     }
 
-    // Handle image upload - construct URL path
+    // Get current book to handle old image
+    const currentBook = await Book.findById(id);
+    if (!currentBook) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Không tìm thấy sách để cập nhật!" 
+      });
+    }
+
+    // Handle new image upload to Cloudinary
     if (req.file) {
-      updates.image = `/uploads/${req.file.filename}`;
+      try {
+        // Delete old image from Cloudinary if exists
+        if (currentBook.image) {
+          const publicId = currentBook.image.split('/').pop().split('.')[0];
+          await CloudinaryService.deleteFile(`library-books/${publicId}`).catch(() => {});
+        }
+        
+        // Save buffer to temporary file
+        const tempDir = os.tmpdir();
+        const tempPath = path.join(tempDir, `${Date.now()}_${req.file.originalname}`);
+        await fs.writeFile(tempPath, req.file.buffer);
+        
+        // Upload new image to Cloudinary
+        const uploadResult = await CloudinaryService.uploadFile(tempPath, 'library-books');
+        updates.image = uploadResult.url;
+      } catch (uploadErr) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Upload hình ảnh thất bại: " + uploadErr.message 
+        });
+      }
     }
 
     const book = await Book.findByIdAndUpdate(id, updates, { 
@@ -150,26 +190,12 @@ exports.update = async (req, res) => {
       runValidators: true 
     });
 
-    if (!book) {
-      return res.status(404).json({ 
-        success: false,
-        message: "Không tìm thấy sách để cập nhật!" 
-      });
-    }
-
     res.status(200).json({ 
       success: true,
       message: "✅ Cập nhật sách thành công!",
       book 
     });
   } catch (err) {
-    // Delete uploaded file if update fails
-    if (req.file) {
-      const fs = require('fs').promises;
-      const path = require('path');
-      await fs.unlink(path.join(__dirname, '../', req.file.path)).catch(() => {});
-    }
-    
     if (err.code === 11000) {
       return res.status(400).json({ 
         success: false,
@@ -207,6 +233,17 @@ exports.delete = async (req, res) => {
       });
     }
 
+    // Delete image from Cloudinary if exists
+    if (book.image) {
+      try {
+        const publicId = book.image.split('/').pop().split('.')[0];
+        await CloudinaryService.deleteFile(`library-books/${publicId}`).catch(() => {});
+      } catch (err) {
+        console.error('Error deleting image from Cloudinary:', err);
+        // Continue with deletion even if image delete fails
+      }
+    }
+
     res.status(200).json({ 
       success: true,
       message: "✅ Xóa sách thành công!",
@@ -218,6 +255,18 @@ exports.delete = async (req, res) => {
 };
 
 // 6. Đánh giá sách (chỉ user đã mượn và trả)
+// Lấy danh sách sách mà user đã đánh giá
+exports.getMyRatings = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const books = await Book.find({ 'ratings.user': userId }, '_id');
+    const ratedBookIds = books.map(b => b._id.toString());
+    res.status(200).json({ success: true, ratedBookIds });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 exports.rateBook = async (req, res) => {
   try {
     const { id } = req.params;
@@ -230,13 +279,19 @@ exports.rateBook = async (req, res) => {
 
     // Kiểm tra xem user đã từng mượn và trả sách này chưa
     const Loan = require('../models/loan.model');
+    const BorrowSlip = require('../models/borrowSlip.model');
     const returnedLoan = await Loan.findOne({ 
       book: id, 
       user: userId, 
       status: 'returned' 
     });
+    const returnedSlip = await BorrowSlip.findOne({
+      books: id,
+      user: userId,
+      status: 'returned'
+    });
 
-    if (!returnedLoan) {
+    if (!returnedLoan && !returnedSlip) {
       return res.status(403).json({ 
         success: false, 
         message: "Bạn phải mượn và trả sách này trước khi đánh giá!" 

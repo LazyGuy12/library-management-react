@@ -1,26 +1,8 @@
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 
-// Tạo folder uploads nếu không tồn tại
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Cấu hình storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // Tạo tên file duy nhất: timestamp + random + extension
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
-    cb(null, name + '-' + uniqueSuffix + ext);
-  }
-});
+// Sử dụng memory storage để temp store trước khi upload lên Cloudinary
+const storage = multer.memoryStorage();
 
 // Filter file (chỉ cho image)
 const fileFilter = (req, file, cb) => {

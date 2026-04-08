@@ -18,4 +18,10 @@ router.get('/:userId', authJwt.verifyToken, cardController.findByUserId);
 // Gia hạn thẻ độc giả (Admin only)
 router.put('/:userId/renew', authJwt.verifyToken, authJwt.isAdmin, cardController.renewCard);
 
+// Khóa thẻ độc giả (Admin only)
+router.put('/:userId/lock', authJwt.verifyToken, authJwt.isAdmin, cardController.lockCard);
+
+// Mở khóa thẻ độc giả (Admin only)
+router.put('/:userId/unlock', authJwt.verifyToken, authJwt.isAdmin, cardController.unlockCard);
+
 module.exports = router;

@@ -124,11 +124,52 @@ exports.findAll = async (req, res) => {
       .limit(limit)
       .sort({ createdAt: -1 });
 
+    // Populate card data for each user
+    const usersWithCards = await Promise.all(
+      users.map(async (user) => {
+        let card = await LibraryCard.findOne({ user: user._id });
+        
+        // Auto-create card if it doesn't exist and user is not admin
+        if (!card && user.role !== 'ADMIN') {
+          const expiryDate = new Date();
+          expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+          const year = new Date().getFullYear();
+          const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+          const cardNumber = `LIB-${year}-${randomStr}`;
+          
+          card = new LibraryCard({
+            user: user._id,
+            cardNumber: cardNumber,
+            status: 'ACTIVE',
+            expiryDate: expiryDate
+          });
+          
+          try {
+            await card.save();
+          } catch (err) {
+            console.error('Error creating card:', err);
+            card = null;
+          }
+        }
+        
+        return {
+          ...user.toObject(),
+          card: card ? {
+            cardNumber: card.cardNumber,
+            status: card.status,
+            issuedDate: card.issuedDate,
+            expiryDate: card.expiryDate,
+            renewalCount: card.renewalCount
+          } : null
+        };
+      })
+    );
+
     const total = await User.countDocuments();
 
     res.status(200).json({
       success: true,
-      users,
+      users: usersWithCards,
       pagination: {
         page,
         limit,
