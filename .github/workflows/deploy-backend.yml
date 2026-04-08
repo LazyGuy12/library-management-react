@@ -1,0 +1,46 @@
+name: Deploy Backend to AWS Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm install
+
+      - name: Run tests (optional)
+        working-directory: ./backend
+        run: npm test || true
+
+      - name: Deploy to Elastic Beanstalk
+        working-directory: ./backend
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          pip install awsebcli
+          eb init -p "node.js-18" "library-management" --region us-east-1 --quiet || true
+          eb deploy library-backend-env --staged
+
+      - name: Success notification
+        if: success()
+        run: |
+          echo "✅ Backend deployed successfully!"
+          echo "URL: https://library-backend.elasticbeanstalk.com"

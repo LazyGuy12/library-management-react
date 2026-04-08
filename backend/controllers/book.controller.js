@@ -230,13 +230,19 @@ exports.rateBook = async (req, res) => {
 
     // Kiểm tra xem user đã từng mượn và trả sách này chưa
     const Loan = require('../models/loan.model');
+    const BorrowSlip = require('../models/borrowSlip.model');
     const returnedLoan = await Loan.findOne({ 
       book: id, 
       user: userId, 
       status: 'returned' 
     });
+    const returnedSlip = await BorrowSlip.findOne({
+      books: id,
+      user: userId,
+      status: 'returned'
+    });
 
-    if (!returnedLoan) {
+    if (!returnedLoan && !returnedSlip) {
       return res.status(403).json({ 
         success: false, 
         message: "Bạn phải mượn và trả sách này trước khi đánh giá!" 
